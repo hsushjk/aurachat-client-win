@@ -1,0 +1,235 @@
+<Window x:Class="AuraChat.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AuraChat" Height="640" Width="980" MinWidth="720" MinHeight="480" Icon="app.ico"
+        PreviewKeyDown="OnWindowKey" Background="{DynamicResource Bg}" WindowStartupLocation="CenterScreen"
+        Activated="OnActivated">
+  <Grid x:Name="RootGrid">
+    <Grid x:Name="BackdropLayer" Visibility="Collapsed" IsHitTestVisible="False">
+      <Image x:Name="BackdropImage" Stretch="UniformToFill" />
+      <Border x:Name="BackdropTint" Background="{DynamicResource GlassOverlay}" />
+    </Grid>
+
+    <StackPanel x:Name="ConnectPanel" VerticalAlignment="Center" Margin="28">
+      <TextBlock Text="AuraChat" FontSize="26" FontWeight="SemiBold" />
+
+      <TextBlock Text="地址" Foreground="{DynamicResource Dim}" Margin="0,12,0,4" />
+      <TextBox x:Name="AddrBox" />
+
+      <TextBlock Text="用户名" Foreground="{DynamicResource Dim}" Margin="0,10,0,4" />
+      <TextBox x:Name="UserBox" />
+      <TextBlock Text="密码" Foreground="{DynamicResource Dim}" Margin="0,10,0,4" />
+      <PasswordBox x:Name="PassBox" Background="{DynamicResource Panel}" Foreground="{DynamicResource Fg}"
+                   BorderBrush="{DynamicResource Line}" Padding="8,6" FontSize="13" />
+
+      <Button x:Name="ConnectBtn" Content="连接" Margin="0,18,0,0" HorizontalAlignment="Left" Click="OnConnect" />
+      <TextBlock x:Name="ConnectMsg" Foreground="#F87171" TextWrapping="Wrap" Margin="0,12,0,0" />
+    </StackPanel>
+
+    <Grid x:Name="ChatPanel" Visibility="Collapsed" Background="{DynamicResource Bg}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <!-- 概览 / 记忆 / 日志 仅主人（owner）可见 -->
+      <Border Grid.Row="0" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}"
+              BorderThickness="0,0,0,1" Padding="8,3">
+        <StackPanel Orientation="Horizontal">
+          <Button Content="聊天" Style="{StaticResource NavButton}" Click="OnNavChat" Margin="0,0,2,0" />
+          <Button Content="空间" Style="{StaticResource NavButton}" Click="OnNavSpace" Margin="0,0,2,0" />
+          <Button Content="心情" Style="{StaticResource NavButton}" Click="OnNavMood" Margin="0,0,2,0" />
+          <Button x:Name="NavOverviewBtn" Content="概览" Style="{StaticResource NavButton}"
+                  Click="OnNavOverview" Margin="0,0,2,0" Visibility="Collapsed" />
+          <Button x:Name="NavMemoryBtn" Content="记忆" Style="{StaticResource NavButton}"
+                  Click="OnNavMemory" Margin="0,0,2,0" Visibility="Collapsed" />
+          <Button Content="设置" Style="{StaticResource NavButton}" Click="OnNavSettings" Margin="0,0,2,0" />
+          <Button x:Name="NavLogsBtn" Content="日志" Style="{StaticResource NavButton}"
+                  Click="OnNavLogs" Visibility="Collapsed" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="14,8">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button x:Name="SearchBtn" Style="{StaticResource IconButton}" Click="OnToggleSearch" ToolTip="搜索（Ctrl+F）">
+              <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+            </Button>
+          </StackPanel>
+          <Border x:Name="AvatarBox" Width="30" Height="30" CornerRadius="15" Margin="0,0,10,0"
+                  Background="{DynamicResource TaBg}" ClipToBounds="True" Visibility="Collapsed">
+            <Image x:Name="AvatarImage" Stretch="UniformToFill" />
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock x:Name="TitleText" Text="AuraChat" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock x:Name="StateText" Text="连接中…" Foreground="{DynamicResource Dim}" FontSize="11" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Row="2" x:Name="SearchBar" Visibility="Collapsed" Padding="12,6"
+              Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="26" Margin="6,0,0,0"
+                  Click="OnSearchClose" ToolTip="关闭搜索（Esc）">
+            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+          </Button>
+          <Grid>
+            <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent" Padding="2,5"
+                     TextChanged="OnSearchChanged" />
+            <TextBlock x:Name="SearchHint" Text="在已加载的消息里搜索（文字 / 名字 / 说明）…"
+                       Foreground="{DynamicResource Dim}" FontSize="12" Margin="4,0,0,0"
+                       VerticalAlignment="Center" IsHitTestVisible="False" />
+          </Grid>
+        </DockPanel>
+      </Border>
+
+      <Grid Grid.Row="3">
+        <ScrollViewer x:Name="Scroll" VerticalScrollBarVisibility="Auto" Padding="10" ScrollChanged="OnScrollChanged">
+          <StackPanel>
+            <!-- 插页后用 TopAnchor/PinToAnchor 把正在看的那条钉回原位 -->
+            <Button x:Name="OlderBtn" Content="查看更早的记录" HorizontalAlignment="Center"
+                    Margin="0,2,0,10" Padding="12,5" FontSize="12"
+                    Background="{DynamicResource Panel}" Visibility="Collapsed" Click="OnLoadOlder" />
+            <TextBlock x:Name="OlderHint" Text="没有更早的记录了" HorizontalAlignment="Center"
+                       Foreground="{DynamicResource Dim}" FontSize="11" Margin="0,0,0,10" Visibility="Collapsed" />
+            <ItemsControl x:Name="MsgList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid>
+                    <Border Visibility="{Binding DividerVisibility}" HorizontalAlignment="Center" Margin="0,12,0,4"
+                            Background="{DynamicResource Panel}" CornerRadius="9" Padding="9,3">
+                      <TextBlock Text="{Binding DividerText}" FontSize="10" Foreground="{DynamicResource Dim}" />
+                    </Border>
+
+                    <StackPanel Visibility="{Binding ContentVisibility}" HorizontalAlignment="{Binding Align}"
+                                MaxWidth="420" Margin="0,3">
+                      <Border Background="{Binding Bg}" CornerRadius="10" Padding="10,7"
+                              MouseLeftButtonDown="OnBubbleClick" MouseRightButtonDown="OnBubbleRightDown">
+                        <Border.ContextMenu>
+                          <ContextMenu>
+                            <MenuItem Header="复制文字" Visibility="{Binding CopyVisibility}" Click="OnCopyText" />
+                            <MenuItem Header="保存图片…" Visibility="{Binding SaveImageVisibility}" Click="OnSaveImage" />
+                            <MenuItem Header="保存语音…" Visibility="{Binding SaveVoiceVisibility}" Click="OnSaveVoice" />
+                          </ContextMenu>
+                        </Border.ContextMenu>
+                        <StackPanel>
+                          <Image Source="{Binding Pic}" Visibility="{Binding PicVisibility}"
+                                 MaxWidth="300" MaxHeight="300" Stretch="Uniform"
+                                 HorizontalAlignment="Left" Margin="0,0,0,2" />
+                          <TextBlock Text="{Binding Body}" TextWrapping="Wrap" Visibility="{Binding TextVisibility}" />
+                          <StackPanel Orientation="Horizontal" Visibility="{Binding VoiceVisibility}" Margin="0,2">
+                            <Path Data="M0,0 L9,5.5 L0,11 Z" Fill="{DynamicResource Dim}" VerticalAlignment="Center" />
+                            <StackPanel Margin="8,0" VerticalAlignment="Center">
+                              <StackPanel Orientation="Horizontal">
+                                <Rectangle Width="3" Height="7" RadiusX="1.5" RadiusY="1.5" Fill="#8FB6F0" VerticalAlignment="Center" />
+                                <Rectangle Width="3" Height="13" RadiusX="1.5" RadiusY="1.5" Fill="#8FB6F0" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                <Rectangle Width="3" Height="19" RadiusX="1.5" RadiusY="1.5" Fill="#8FB6F0" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                <Rectangle Width="3" Height="11" RadiusX="1.5" RadiusY="1.5" Fill="#8FB6F0" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                <Rectangle Width="3" Height="16" RadiusX="1.5" RadiusY="1.5" Fill="#8FB6F0" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                <Rectangle Width="3" Height="9" RadiusX="1.5" RadiusY="1.5" Fill="#8FB6F0" VerticalAlignment="Center" Margin="2,0,0,0" />
+                              </StackPanel>
+                              <ProgressBar Height="2" Margin="0,3,0,0" Minimum="0" Maximum="1"
+                                           Value="{Binding VoiceProgress, Mode=OneWay}"
+                                           Visibility="{Binding VoiceBarVisibility}"
+                                           Foreground="#8FB6F0" Background="#33FFFFFF" BorderThickness="0" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding VoiceLen}" Foreground="{DynamicResource Dim}" FontSize="12" VerticalAlignment="Center" />
+                          </StackPanel>
+                          <TextBlock Text="{Binding Clock}" Foreground="{DynamicResource Dim}" FontSize="10"
+                                     HorizontalAlignment="Right" Margin="0,4,0,0" />
+                        </StackPanel>
+                      </Border>
+
+                      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="2,3,2,0"
+                                  Visibility="{Binding StatusVisibility}">
+                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                   Foreground="{Binding StatusBrush}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="11"
+                                   VerticalAlignment="Center" ToolTip="{Binding StatusTip}" />
+                        <Button Content="重试" Click="OnRetry" Height="22" Padding="9,0" Margin="8,0,0,0"
+                                Style="{StaticResource GhostButton}" Visibility="{Binding RetryVisibility}"
+                                ToolTip="原样再发一次" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 滚上去时有新消息才露出；回到底部时顺手清未读 -->
+        <Button x:Name="JumpBtn" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,26,16" Width="40" Height="40" Cursor="Hand" Click="OnJumpBottom"
+                ToolTip="有新消息，点一下回到底部">
+          <Button.Template>
+            <ControlTemplate TargetType="Button">
+              <Grid>
+                <Ellipse x:Name="Dot" Width="40" Height="40" Fill="{DynamicResource Accent}" />
+                <TextBlock Text="&#xE74B;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Grid>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="Dot" Property="Opacity" Value="0.85" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Button.Template>
+        </Button>
+      </Grid>
+
+      <Border Grid.Row="4" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" x:Name="SendBtn" Style="{StaticResource IconButton}"
+                  Background="{DynamicResource Accent}" Foreground="White" Margin="8,0,0,0" Click="OnSend"
+                  ToolTip="发送">
+            <TextBlock Text="&#xE724;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="White" />
+          </Button>
+          <Button DockPanel.Dock="Right" x:Name="VoiceBtn" Style="{StaticResource IconButton}" Margin="2,0,0,0"
+                  Click="OnVoice" ToolTip="录一段语音：点一下开始，再点一下发出去">
+            <TextBlock x:Name="VoiceGlyph" Text="&#xE720;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+          </Button>
+          <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Margin="2,0,0,0"
+                  Click="OnPickImage" ToolTip="发一张图">
+            <TextBlock Text="&#xE91B;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+          </Button>
+          <Button DockPanel.Dock="Right" x:Name="StickerBtn" Style="{StaticResource IconButton}" Margin="2,0,0,0"
+                  Click="OnSticker" ToolTip="表情面板">
+            <TextBlock Text="&#xE76E;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+          </Button>
+          <TextBox x:Name="InputBox" AcceptsReturn="False" TextChanged="OnInputChanged" KeyDown="OnInputKey"
+                   GotFocus="OnInputFocus" />
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Row="5" x:Name="StickerBar" Visibility="Collapsed"
+              Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" Padding="6">
+          <WrapPanel x:Name="StickerList" />
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <Border x:Name="ImageViewer" Visibility="Collapsed" Background="#EE0B0D10"
+            MouseLeftButtonDown="OnCloseViewer">
+      <Image x:Name="ViewerImage" Stretch="Uniform" Margin="28" />
+    </Border>
+
+    <Border x:Name="ToastBox" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+            Margin="0,0,0,80" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}"
+            BorderThickness="1" CornerRadius="8" Padding="14,8" IsHitTestVisible="False">
+      <TextBlock x:Name="ToastText" FontSize="12" />
+    </Border>
+  </Grid>
+</Window>
